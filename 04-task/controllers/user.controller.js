@@ -1,22 +1,40 @@
 import User from "../models/User.model.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
+// ================= REGISTER =================
 const registerUser = async (req, res) => {
-    const {userName, userEmail, userPassword} = req.body;
+    const { userName, userEmail, userPassword } = req.body;
 
-    // ✅ Pehle fields check karo
-    if(!userName || !userEmail || !userPassword) {
-        return res.status(400).json({message: "All fields are required"});
+    // Validation
+    if (!userName || !userEmail || !userPassword) {
+        return res.status(400).json({
+            message: "All fields are required"
+        });
     }
 
     try {
-        // ✅ Check karo user pehle se exist toh nahi karta
+        // Check existing user
         const existingUser = await User.findOne({ userEmail });
 
-        if(existingUser) {
-            return res.status(400).json({message: "User already exists"});
+        if (existingUser) {
+            return res.status(409).json({
+                message: "User already exists"
+            });
         }
 
-        const user = await User.create({userName, userEmail, userPassword});
+        // Hash password
+        const hashPassword = bcrypt.hashSync(userPassword, 10);
+
+        // Create user
+        const user = await User.create({
+            userName,
+            userEmail,
+            userPassword: hashPassword
+        });
+
+        // Remove password from response
+    
 
         return res.status(201).json({
             message: "User created successfully",
@@ -24,36 +42,76 @@ const registerUser = async (req, res) => {
         });
 
     } catch (error) {
-        console.log("Error:", error.message);
-        return res.status(500).json({message: "User not created", error});
+        return res.status(500).json({
+            message: "User not created",
+            error: error.message
+        });
     }
-}
+};
 
+
+// ================= LOGIN =================
 const loginUser = async (req, res) => {
-    const {userEmail, userPassword} = req.body;
+    const { userEmail, userPassword } = req.body;
 
-    if(!userEmail || !userPassword) {
-        return res.status(400).json({message: "All fields are required"});
+    // Validation
+    if (!userEmail || !userPassword) {
+        return res.status(400).json({
+            message: "Invalid credentials"
+        });
     }
 
     try {
-        // ✅ Email AUR password dono se find karo
-        const existingUser = await User.findOne({userEmail, userPassword});
+        // Find user
+        const existingUser = await User.findOne({ userEmail });
 
-        if(!existingUser) {
-            return res.status(400).json({message: "Invalid email or password"});
+        if (!existingUser) {
+            return res.status(401).json({
+                message: "Invalid credentials"
+            });
         }
+
+        // Compare password
+        const isMatch = bcrypt.compareSync(
+            userPassword,
+            existingUser.userPassword
+        );
+
+        if (!isMatch) {
+            return res.status(401).json({
+                message: "Invalid credentials"
+            });
+        }
+
+        // Generate token
+        const token = jwt.sign(
+            { id: existingUser._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        // Remove password
+        const { userPassword: _, ...userData } = existingUser._doc;
+
+        // Set cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: false, // true in production (https)
+            maxAge: 24 * 60 * 60 * 1000,
+        });
 
         return res.status(200).json({
             message: "User logged in successfully",
-            existingUser
+            user: userData,
+            token
         });
 
     } catch (error) {
-        console.log("Error:", error.message);
-        return res.status(500).json({message: "Login failed", error});
+        return res.status(500).json({
+            message: "Login failed",
+            error: error.message
+        });
     }
-}
+};
 
-// ✅ Ek saath export
-export { registerUser, loginUser }
+export { registerUser, loginUser };
