@@ -10,7 +10,7 @@ const registerUser = async (req, res) => {
     if (!userName || !userEmail || !userPassword) {
         return res.status(400).json({
             message: "All fields are required"
-        });
+        });89
     }
 
     try {
@@ -50,7 +50,7 @@ const registerUser = async (req, res) => {
 };
 
 
-// ================= LOGIN =================
+
 const loginUser = async (req, res) => {
     const { userEmail, userPassword } = req.body;
 

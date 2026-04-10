@@ -8,10 +8,7 @@ import {getUserTaskCount, getTaskCountByUserId} from "../controllers/task.contro
 const taskRouter = Router()
 
 taskRouter.get("/my-task-count", isLoggedin, getUserTaskCount);
-
 taskRouter.post("/create-task", isLoggedin, createTask)
-
 taskRouter.get("/my-task-count", getUserTaskCount);
 taskRouter.get("/task-count/:userId", getTaskCountByUserId);
-
 export default taskRouter
